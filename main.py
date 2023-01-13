@@ -27,6 +27,36 @@ colors = {
     'avery': (11, 20, 26)
 }
 
+
+def check_menu(mouse_pos, menu):
+    x, y = mouse_pos
+    menu.clicked_menu(mouse_pos)
+    
+    if menu.active_menu:
+            for item in menu.active_menu.items:
+                if item.hover(mouse_pos):
+                    item.text = item.hover_text
+                else:
+                    item.text = item.default_text
+
+
+def check_buttons(mouse_pos, buttons, bottom_panel, slider_ships, pattern, dt):
+    if (mouse_pos[1] > (CELLS_H * CELL_SIZE - 110) and not pattern):
+            if (buttons['reload'].y > (CELLS_H * CELL_SIZE) - 75):
+                bottom_panel.y = bottom_panel.y - (BTTN_SLIDE_SPEED * dt)
+                buttons['reload'].y = buttons['reload'].y - (BTTN_SLIDE_SPEED * dt)
+                buttons['pause'].y = buttons['pause'].y - (BTTN_SLIDE_SPEED * dt)
+                buttons['clear'].y = buttons['clear'].y - (BTTN_SLIDE_SPEED * dt)
+                slider_ships.y = slider_ships.y - (BTTN_SLIDE_SPEED * dt)
+    else:
+        if (buttons['reload'].y < (CELLS_H * CELL_SIZE) + 50):
+            bottom_panel.y = bottom_panel.y + (BTTN_SLIDE_SPEED * dt)
+            buttons['reload'].y = buttons['reload'].y + (BTTN_SLIDE_SPEED * dt)
+            buttons['pause'].y = buttons['pause'].y + (BTTN_SLIDE_SPEED * dt)
+            buttons['clear'].y = buttons['clear'].y + (BTTN_SLIDE_SPEED * dt)
+            slider_ships.y = slider_ships.y + (BTTN_SLIDE_SPEED * dt)
+
+
 def main():
     # Setup the grid
     cells = Grid(CELL_SIZE, CELLS_W, CELLS_H, 0, MENUBAR_H)
@@ -103,9 +133,25 @@ def main():
     # Main loop
     while True:
         # Set the FPS
-        dt = clock.tick(30)
+        dt = clock.tick(60)
 
+        # Check the mouse position
         mouse_pos = pygame.mouse.get_pos()
+
+        # Start the threads
+        panel_thread = Thread(
+            target=check_buttons, 
+            args=(mouse_pos, buttons, bottom_panel, slider_ships, pattern, dt))
+
+        panel_thread.start()
+        threads.append(panel_thread)
+
+        if not paused:
+            # Calculate the neighbors
+            for i in range(THREADS_COUNT):
+                thread = Thread(target=cells.calculate_neighbors, args=(i, THREADS_COUNT))
+                thread.start()
+                threads.append(thread)
 
         # Check for events
         for event in pygame.event.get():
@@ -120,8 +166,14 @@ def main():
                     buttons['pause'].set_image(icons['play'] if paused else icons['pause'])
                     continue
 
-            # Check if the mouse is clicked
+            # If the mouse is clicked
             if event.type == pygame.MOUSEBUTTONDOWN:
+
+                mouse_thread = Thread(target=check_menu, args=(mouse_pos, menu))
+                mouse_thread.start()
+        
+                threads.append(mouse_thread)
+
                 # If mouse clicked reload button
                 if buttons['reload'].get_rect().collidepoint(event.pos):
                     cells = Grid(CELL_SIZE, CELLS_W, CELLS_H, 0, MENUBAR_H)
@@ -160,11 +212,6 @@ def main():
                     cells.insert_pattern(pattern, x, y)
                     pattern = None
 
-                # If mouse clicked the menu
-                menu.clicked_menu(mouse_pos)
-
-        
-
                 # TODO: put this in a button (maybe revive cell button)
                 #x, y = pygame.mouse.get_pos()
                 #x = x // CELL_SIZE
@@ -172,39 +219,15 @@ def main():
 
                 #cells.revive_cell(x, y)
 
-        screen.fill((0, 0, 0))
+        # Wait for all the threads to finish
+        for thread in threads:
+            thread.join()
+        threads = []
 
-        if not paused:
-            # Calculate the neighbors
-            for i in range(THREADS_COUNT):
-                thread = Thread(target=cells.calculate_neighbors, args=(i, THREADS_COUNT))
-                thread.start()
-                threads.append(thread)
-            
-            # Wait for the threads to finish
-            for thread in threads:
-                thread.join()
-            
-            threads = []
+        screen.fill((0, 0, 0))
 
         # Update and draw the cells
         cells.evolve(screen)
-
-        # Slide the buttons in and out
-        if (pygame.mouse.get_pos()[1] > (CELLS_H * CELL_SIZE - 110) and not pattern):
-            if (buttons['reload'].y > (CELLS_H * CELL_SIZE) - 75):
-                bottom_panel.y = bottom_panel.y - (BTTN_SLIDE_SPEED * dt)
-                buttons['reload'].y = buttons['reload'].y - (BTTN_SLIDE_SPEED * dt)
-                buttons['pause'].y = buttons['pause'].y - (BTTN_SLIDE_SPEED * dt)
-                buttons['clear'].y = buttons['clear'].y - (BTTN_SLIDE_SPEED * dt)
-                slider_ships.y = slider_ships.y - (BTTN_SLIDE_SPEED * dt)
-        else:
-            if (buttons['reload'].y < (CELLS_H * CELL_SIZE) + 50):
-                bottom_panel.y = bottom_panel.y + (BTTN_SLIDE_SPEED * dt)
-                buttons['reload'].y = buttons['reload'].y + (BTTN_SLIDE_SPEED * dt)
-                buttons['pause'].y = buttons['pause'].y + (BTTN_SLIDE_SPEED * dt)
-                buttons['clear'].y = buttons['clear'].y + (BTTN_SLIDE_SPEED * dt)
-                slider_ships.y = slider_ships.y + (BTTN_SLIDE_SPEED * dt)
                 
         # Draw the held pattern
         if pattern:
