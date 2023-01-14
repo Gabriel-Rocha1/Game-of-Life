@@ -186,7 +186,7 @@ def main():
 
             # If the mouse is clicked
             if event.type == pygame.MOUSEBUTTONDOWN:
-                # If mouse clicked on the menu
+                # Check if mouse clicked on the menu
                 menu.clicked_menu(mouse_pos)
 
                 # If mouse clicked reload button
@@ -217,10 +217,6 @@ def main():
                 if slider_ships.prev_button.get_rect().collidepoint(event.pos):
                     slider_ships.previous()
 
-                # If slider was clicked
-                if slider_ships.get_rect().collidepoint(event.pos) and not pattern:
-                    pattern = slider_ships.selected()
-                
                 # If the user has selected a pattern
                 if pattern and not slider_ships.get_rect().collidepoint(event.pos):
                     x, y = mouse_pos
@@ -230,12 +226,24 @@ def main():
                     cells.insert_pattern(pattern, x, y)
                     pattern = None
 
+                # If slider was clicked
+                if slider_ships.get_rect().collidepoint(event.pos) and not pattern:
+                    pattern = slider_ships.selected()
+
+                # If the program is in drawing mode
                 if drawing_mode:
                     x, y = mouse_pos
                     x = (x // CELL_SIZE)
                     y = (y // CELL_SIZE) - MENUBAR_H
 
                     cells.revive_cell(x, y)
+        
+        if drawing_mode and pygame.mouse.get_pressed()[0]:
+            x, y = mouse_pos
+            x = (x // CELL_SIZE)
+            y = (y // CELL_SIZE) - MENUBAR_H
+
+            cells.revive_cell(x, y)
 
         # Wait for all the threads to finish
         for thread in threads:
