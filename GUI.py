@@ -81,16 +81,16 @@ class PatternSlider (VisualElement):
             self.x - (self.size // 2) - 10,
             self.y + (self.size // 4),
             self.size // 2)
-        self.prev_button.set_image(image.load('assets/back-bttn.png'))
+        self.prev_button.set_image(image.load('assets/img/back-bttn.png'))
 
         self.next_button = ImageButton(
             self.x + self.size + 10,
             self.y + (self.size // 4),
             self.size // 2)
-        self.next_button.set_image(image.load('assets/next-bttn.png'))
+        self.next_button.set_image(image.load('assets/img/next-bttn.png'))
 
         init_font()
-        self.font = Font('assets/Pixellari.ttf', 16)
+        self.font = Font('assets/font/Pixellari.ttf', 16)
 
     def add_pattern(self, pattern):
         '''
@@ -272,7 +272,7 @@ class Menu():
         self.y = None
         
         init_font()
-        self.font = Font('assets/Pixellari.ttf', 18)
+        self.font = Font('assets/font/Pixellari.ttf', 18)
 
         self.text = self.font.render(text, True, (255, 255, 255))
         self.items = []

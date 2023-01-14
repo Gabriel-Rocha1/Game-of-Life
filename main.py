@@ -29,9 +29,10 @@ colors = {
 
 
 def check_menu(mouse_pos, menu):
-    x, y = mouse_pos
-    menu.clicked_menu(mouse_pos)
-    
+    '''
+    Checks if the mouse is hovering over a menu item.
+    '''
+
     if menu.active_menu:
             for item in menu.active_menu.items:
                 if item.hover(mouse_pos):
@@ -41,19 +42,21 @@ def check_menu(mouse_pos, menu):
 
 
 def check_buttons(mouse_pos, buttons, bottom_panel, slider_ships, pattern, dt):
+    '''
+    Checks if the mouse is hovering over the bottom panel, and if so, slides it up.
+    '''
+
     if (mouse_pos[1] > (CELLS_H * CELL_SIZE - 110) and not pattern):
-            if (buttons['reload'].y > (CELLS_H * CELL_SIZE) - 75):
-                bottom_panel.y = bottom_panel.y - (BTTN_SLIDE_SPEED * dt)
-                buttons['reload'].y = buttons['reload'].y - (BTTN_SLIDE_SPEED * dt)
-                buttons['pause'].y = buttons['pause'].y - (BTTN_SLIDE_SPEED * dt)
-                buttons['clear'].y = buttons['clear'].y - (BTTN_SLIDE_SPEED * dt)
-                slider_ships.y = slider_ships.y - (BTTN_SLIDE_SPEED * dt)
+        if (buttons['reload'].y > (CELLS_H * CELL_SIZE) - 75):
+            bottom_panel.y = bottom_panel.y - (BTTN_SLIDE_SPEED * dt)
+            for button in buttons:
+                buttons[button].y = buttons[button].y - (BTTN_SLIDE_SPEED * dt)
+            slider_ships.y = slider_ships.y - (BTTN_SLIDE_SPEED * dt)
     else:
         if (buttons['reload'].y < (CELLS_H * CELL_SIZE) + 50):
             bottom_panel.y = bottom_panel.y + (BTTN_SLIDE_SPEED * dt)
-            buttons['reload'].y = buttons['reload'].y + (BTTN_SLIDE_SPEED * dt)
-            buttons['pause'].y = buttons['pause'].y + (BTTN_SLIDE_SPEED * dt)
-            buttons['clear'].y = buttons['clear'].y + (BTTN_SLIDE_SPEED * dt)
+            for button in buttons:
+                buttons[button].y = buttons[button].y + (BTTN_SLIDE_SPEED * dt)
             slider_ships.y = slider_ships.y + (BTTN_SLIDE_SPEED * dt)
 
 
@@ -63,10 +66,11 @@ def main():
 
     # load the images
     icons = {
-        'play': pygame.image.load('assets/play-bttn.png'),
-        'pause': pygame.image.load('assets/pause-bttn.png'),
-        'reload': pygame.image.load('assets/reload-bttn.png'),
-        'clear': pygame.image.load('assets/clear-bttn.png')
+        'play': pygame.image.load('assets/img/play-bttn.png'),
+        'pause': pygame.image.load('assets/img/pause-bttn.png'),
+        'reload': pygame.image.load('assets/img/reload-bttn.png'),
+        'clear': pygame.image.load('assets/img/clear-bttn.png'),
+        'pencil': pygame.image.load('assets/img/pencil-bttn.png')
     }
 
     # Setup the buttons
@@ -81,7 +85,11 @@ def main():
         
         'clear': ImageButton(
             (CELLS_W * CELL_SIZE // 2) + 50, (CELLS_H * CELL_SIZE) + 50, 50, 
-            icons['clear'])
+            icons['clear']),
+        
+        'pencil': ImageButton(
+            50, (CELLS_H * CELL_SIZE) + 50, 50,
+            icons['pencil'])
     }
 
     # Setup the pattern slider
@@ -127,7 +135,10 @@ def main():
     clock = pygame.time.Clock()
 
     pattern = None
+    
     paused = False
+    drawing_mode = False
+    
     threads = []
 
     # Main loop
@@ -142,8 +153,15 @@ def main():
         panel_thread = Thread(
             target=check_buttons, 
             args=(mouse_pos, buttons, bottom_panel, slider_ships, pattern, dt))
-
+        
+        mouse_thread = Thread(
+            target=check_menu, 
+            args=(mouse_pos, menu))
+  
+        mouse_thread.start()
         panel_thread.start()
+
+        threads.append(mouse_thread)
         threads.append(panel_thread)
 
         if not paused:
@@ -168,11 +186,8 @@ def main():
 
             # If the mouse is clicked
             if event.type == pygame.MOUSEBUTTONDOWN:
-
-                mouse_thread = Thread(target=check_menu, args=(mouse_pos, menu))
-                mouse_thread.start()
-        
-                threads.append(mouse_thread)
+                # If mouse clicked on the menu
+                menu.clicked_menu(mouse_pos)
 
                 # If mouse clicked reload button
                 if buttons['reload'].get_rect().collidepoint(event.pos):
@@ -190,6 +205,10 @@ def main():
                     cells.clear()
                     continue
 
+                # If mouse clicked pencil button
+                if buttons['pencil'].get_rect().collidepoint(event.pos):
+                    drawing_mode = False if drawing_mode else True
+
                 # If slider's next button was clicked
                 if slider_ships.next_button.get_rect().collidepoint(event.pos):
                     slider_ships.next()
@@ -204,20 +223,19 @@ def main():
                 
                 # If the user has selected a pattern
                 if pattern and not slider_ships.get_rect().collidepoint(event.pos):
-                    x, y = pygame.mouse.get_pos()
-
-                    x = (x - (pattern.size * CELL_SIZE)) // CELL_SIZE
-                    y = (y - (pattern.size * CELL_SIZE)) // CELL_SIZE - 2
+                    x, y = mouse_pos
+                    x = (x // CELL_SIZE) - pattern.size
+                    y = ((y // CELL_SIZE) - MENUBAR_H) - pattern.size
 
                     cells.insert_pattern(pattern, x, y)
                     pattern = None
 
-                # TODO: put this in a button (maybe revive cell button)
-                #x, y = pygame.mouse.get_pos()
-                #x = x // CELL_SIZE
-                #y = y // CELL_SIZE
+                if drawing_mode:
+                    x, y = mouse_pos
+                    x = (x // CELL_SIZE)
+                    y = (y // CELL_SIZE) - MENUBAR_H
 
-                #cells.revive_cell(x, y)
+                    cells.revive_cell(x, y)
 
         # Wait for all the threads to finish
         for thread in threads:
@@ -249,15 +267,6 @@ def main():
 
         # Draw the menu
         menu.draw(screen)
-
-        # If there is a menu open
-        # TODO: fix lag
-        if menu.active_menu:
-            for item in menu.active_menu.items:
-                if item.hover(mouse_pos):
-                    item.text = item.hover_text
-                else:
-                    item.text = item.default_text
 
         pygame.display.update()
 
