@@ -104,14 +104,14 @@ def main():
     menu = MenuBar(CELLS_W * CELL_SIZE, MENUBAR_H * CELL_SIZE, colors['avery'])
     
     menu_file = Menu('File')
-    menu_edit = Menu('Edit')
+    menu_edit = Menu('Fill')
     
-    menu_file.add_item(MenuItem('Place'))
-    menu_file.add_item(MenuItem('Holder'))
+    menu_file.add_item(MenuItem('Clear Grid'))
 
-    menu_edit.add_item(MenuItem('This is Temporary'))
-    menu_edit.add_item(MenuItem('It Will Be Changed'))
-    menu_edit.add_item(MenuItem('Do Not Worry'))
+    menu_edit.add_item(MenuItem('Perlin Noise'))
+    menu_edit.add_item(MenuItem('Wavelet Noise'))
+    menu_edit.add_item(MenuItem('Simplex Noise'))
+    menu_edit.add_item(MenuItem('OpenSimplex Noise'))
 
     menu.add_menu(menu_file)
     menu.add_menu(menu_edit)
@@ -148,6 +148,7 @@ def main():
 
         # Check the mouse position
         mouse_pos = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()[0]
 
         # Start the threads
         panel_thread = Thread(
@@ -186,39 +187,41 @@ def main():
 
             # If the mouse is clicked
             if event.type == pygame.MOUSEBUTTONDOWN:
-                # Check if mouse clicked on the menu
-                menu.clicked_menu(mouse_pos)
+                
+                # TODO: MenuItem clicked action
+                if menu.active_menu:
+                    pass
 
                 # If mouse clicked reload button
-                if buttons['reload'].get_rect().collidepoint(event.pos):
+                if buttons['reload'].clicked(mouse_pos):
                     cells = Grid(CELL_SIZE, CELLS_W, CELLS_H, 0, MENUBAR_H)
                     continue
 
                 # If mouse clicked pause button
-                if buttons['pause'].get_rect().collidepoint(event.pos):
+                if buttons['pause'].clicked(mouse_pos):
                     paused = not paused
                     buttons['pause'].set_image(icons['play'] if paused else icons['pause'])
                     continue
 
                 # If mouse clicked clear button
-                if buttons['clear'].get_rect().collidepoint(event.pos):
+                if buttons['clear'].clicked(mouse_pos):
                     cells.clear()
                     continue
 
                 # If mouse clicked pencil button
-                if buttons['pencil'].get_rect().collidepoint(event.pos):
+                if buttons['pencil'].clicked(mouse_pos):
                     drawing_mode = False if drawing_mode else True
 
                 # If slider's next button was clicked
-                if slider_ships.next_button.get_rect().collidepoint(event.pos):
+                if slider_ships.next_button.clicked(mouse_pos):
                     slider_ships.next()
 
                 # If slider's previous button was clicked
-                if slider_ships.prev_button.get_rect().collidepoint(event.pos):
+                if slider_ships.prev_button.clicked(mouse_pos):
                     slider_ships.previous()
 
                 # If the user has selected a pattern
-                if pattern and not slider_ships.get_rect().collidepoint(event.pos):
+                if pattern and not slider_ships.clicked(mouse_pos):
                     x, y = mouse_pos
                     x = (x // CELL_SIZE) - pattern.size
                     y = ((y // CELL_SIZE) - MENUBAR_H) - pattern.size
@@ -227,7 +230,7 @@ def main():
                     pattern = None
 
                 # If slider was clicked
-                if slider_ships.get_rect().collidepoint(event.pos) and not pattern:
+                if slider_ships.clicked(mouse_pos) and not pattern:
                     pattern = slider_ships.selected()
 
                 # If the program is in drawing mode
@@ -237,8 +240,12 @@ def main():
                     y = (y // CELL_SIZE) - MENUBAR_H
 
                     cells.revive_cell(x, y)
+                
+                # Check if mouse clicked on the menu
+                menu.clicked(mouse_pos)
         
-        if drawing_mode and pygame.mouse.get_pressed()[0]:
+        # Mouse dragging to drawing mode
+        if drawing_mode and mouse_pressed:
             x, y = mouse_pos
             x = (x // CELL_SIZE)
             y = (y // CELL_SIZE) - MENUBAR_H

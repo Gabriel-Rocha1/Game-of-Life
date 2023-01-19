@@ -13,19 +13,25 @@ class VisualElement:
     Base class for all visual elements.
     '''
 
-    def __init__(self, x, y, size):
+    def __init__(self, x, y, size, w=None, h=None):
         self.x = x
         self.y = y
-        self.size = size
 
-    def get_rect(self):
+        self.width = w if w else size
+        self.height = h if h else size
+
+        self.size = size
+        self.rect = Rect(x, y, size, size)
+
+    def clicked(self, pos):
         '''
-        Get the rect of the element.
+        Check if the element has been clicked.
         '''
-        return Rect(
-            self.x, self.y,
-            self.size, self.size
-        )
+        self.rect = Rect(self.x, self.y, self.size, self.size)
+        if self.rect.collidepoint(pos):
+            return True
+        else:
+            return False
 
 
 class ImageButton (VisualElement):
@@ -36,8 +42,6 @@ class ImageButton (VisualElement):
 
     def __init__(self, x, y, size, image=None):
         super().__init__(x, y, size)
-
-        self.rect = None
         
         if image:
             self.set_image(image)
@@ -52,10 +56,6 @@ class ImageButton (VisualElement):
             image (pygame.Surface): The image to use.
         '''
         self.image = transform.scale(image, (self.size, self.size))
-        self.rect = Rect(
-            self.x, self.y,
-            self.image.get_width(), self.image.get_height()
-        )
 
     def draw(self, screen):
         '''
@@ -165,12 +165,12 @@ class Panel (VisualElement):
     '''
 
     def __init__(self, x, y, width, height, color, alpha):
-        super().__init__(x, y, {'w': width, 'h': height})
+        super().__init__(x, y, width, width, height)
         
         self.color = color
         self.alpha = alpha
         
-        self.panel = Surface((self.size['w'], self.size['h']))
+        self.panel = Surface((self.width, self.height))
         self.panel.fill(self.color)
         self.panel.set_alpha(self.alpha)
 
@@ -179,7 +179,7 @@ class Panel (VisualElement):
         Set the width of the panel.
         '''
         self.size['w'] = width
-        self.panel = Surface((self.size['w'], self.size['h']))
+        self.panel = Surface((self.width, self.height))
         self.panel.fill(self.color)
         self.panel.set_alpha(self.alpha)
 
@@ -199,8 +199,8 @@ class MenuBar (VisualElement):
     '''
 
     def __init__(self, width, height, color):
-        super().__init__(0, 0, {'w': width, 'h': height})
-        self.background = Panel(0, 0, self.size['w'], self.size['h'], color, 255)
+        super().__init__(0, 0, width, width, height)
+        self.background = Panel(0, 0, self.width, self.height, color, 255)
 
         self.menus = []
 
@@ -216,12 +216,12 @@ class MenuBar (VisualElement):
         pad = 10
         for menu in self.menus:
             menu.x = curr_x + pad // 2
-            menu.y = self.y + (self.size['h'] // 4)
+            menu.y = self.y + (self.height // 4)
             menu._position_items()
 
             curr_x += menu.text.get_width() + pad
     
-    def clicked_menu(self, pos):
+    def clicked(self, pos):
         '''
         Determines wich menu on the bar was clicked. Or if none were clicked.
         This method is called per mouse click.
@@ -229,7 +229,7 @@ class MenuBar (VisualElement):
 
         x, y = pos
 
-        if y > self.size['h']:
+        if y > self.height:
             self.active_menu = False
             return
         
